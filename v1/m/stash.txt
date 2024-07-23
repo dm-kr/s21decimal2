@@ -1,0 +1,25 @@
+// __int128_t asd(s21_decimal val) {
+//   __int128_t x = 0;
+//   for (int i = 0; i < 96; i++) {
+//     __int128_t y = 1;
+//     for (int j = 0; j < i; j++) {
+//       y *= 2;
+//     }
+//     x += y * get_bit(val, i);
+//   }
+//   return x;
+// }
+
+// void zxc(__int128_t x) {
+//   int arr[100] = {0};
+//   int i = 0;
+//   for (; x > 0; i++) {
+//     int a = x % 10;
+//     arr[i] = a;
+//     x = x / 10;
+//   }
+//   for (i--; i >= 0; i--) {
+//     printf("%d", arr[i]);
+//   }
+//   printf("\n");
+// }
