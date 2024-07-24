@@ -127,11 +127,16 @@ bd tobd(s21_decimal value) {
   return res;
 }
 
+// 12341242.1230|89162391369
+
 int tos21(bd value, s21_decimal* res) {
   int ret = 0;
   clear(res);
-  if (is_decimal(value) && bscale(value) < 29) {
+  if (is_decimal(value) && bscale(value) <= 28 && bscale(value) >= 0) {
     s_scale(res, bscale(value));
+    res->bits[0] = value.bits[5];
+    res->bits[1] = value.bits[6];
+    res->bits[2] = value.bits[7];
   }
   if (bscale(value) == 0 && !is_decimal(value))
     for (int i = 0; i < 3; i++) {
@@ -164,3 +169,5 @@ int is_correct(s21_decimal value) {
   }
   return ret;
 }
+
+int shift_bd(bd value) {}
