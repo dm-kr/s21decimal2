@@ -18,12 +18,13 @@ int s21_add(s21_decimal value_1, s21_decimal value_2, s21_decimal* result) {
     clear(result);
     bd tempres = add(a, b);
     if (resign(value_1, value_2) && asign != bsign) tempres = to_acode(tempres);
-    // pbd(tempres);
+    tempres.scale = asc > bsc ? asc : bsc;
     overflow = check_overflow(tempres);
+    // pbd(tempres);
+    // printf("\n\n 96: %d\n\n", get(tempres, 96));
     if (asign && bsign) overflow *= 2;
     *result = tos21(tempres);
     s_sign(result, resign(value_1, value_2));
-    s_scale(result, asc > bsc ? asc : bsc);
   }
   if (overflow) ret = overflow;
   if (error(value_1, value_2) || !result) ret = -1;

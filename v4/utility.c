@@ -11,14 +11,23 @@ bd tobd(s21_decimal value) {
   }
   dec.scale = scale(value);
   dec.sign = sign(value);
+  dec.overflow = 0;
   return dec;
 }
 
 s21_decimal tos21(bd value) {
-  s21_decimal res = Decimal(0);
-  for (int i = 0; i < 4; i++) {
-    res.bits[i] = value.bits[i];
+  bd temp = value;
+  int sc = value.scale;
+  // printf("\n\n %d \n\n", get_significants(temp));
+  while (get_significants(temp) > 96) {
+    temp = downscale(temp, 1);
+    sc--;
   }
+  s21_decimal res = Decimal(0);
+  for (int i = 0; i < 3; i++) {
+    res.bits[i] = temp.bits[i];
+  }
+  s_scale(&res, sc);
   return res;
 }
 
@@ -165,9 +174,7 @@ int ise(bd v1, bd v2) {
   return ret;
 }
 
-int isgore(bd v1, bd v2) {
-  return (isg(v1, v2) || ise(v1, v2)) && v1.sign ^ v2.sign;
-}
+int isgore(bd v1, bd v2) { return (isg(v1, v2) || ise(v1, v2)); }
 
 bd upscale(bd value, int n) {
   bd res = value;
@@ -210,11 +217,19 @@ bd _div(bd v1, bd v2) {
   return res;
 }
 
+bd get10(int p) {
+  bd value = tobd(Decimal(1));
+  for (int i = 0; i < p; i++) {
+    value = upscale(value, 1);
+  }
+  return value;
+}
+
 bd downscale(bd value, int n) {
   bd res = value;
   res.scale = 0;
   res.sign = 0;
-  bd divider = tobd(Decimal(10));
+  bd divider = get10(n);
   for (int i = 0; i < n; i++) {
     res = _div(res, divider);
   }
@@ -257,8 +272,11 @@ int resign(s21_decimal value1, s21_decimal value2) {
 int check_overflow(bd value) {
   int ret = 0;
   bd temp = value;
-  if (value.scale > 0) {
-    temp = upscale(temp, value.scale);
+  int sc = value.scale;
+  // pbd(temp);
+  while (get_significants(temp) > 96 && sc > 0) {
+    temp = downscale(temp, value.scale);
+    sc--;
   }
   if (get_significants(temp) > 96) {
     ret = 1;
