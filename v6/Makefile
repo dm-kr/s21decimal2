@@ -9,7 +9,7 @@ HEADERS = $(wildcard *.h)
 
 OBJ_LIBRARY := $(patsubst %.c, %.o, $(SRCS))
 
-all: s21_decimal.a test gcov_report
+all: s21_decimal.a test gcov_report clean
 
 main: s21_decimal.a
 	@gcc $(CFLAGS) m/main.c s21_decimal.a -o m/main $(LIBS)
@@ -36,6 +36,9 @@ clang:
 
 valgrind:
 	@valgrind --trace-children=yes --track-fds=yes --track-origins=yes --leak-check=full --show-leak-kinds=all -s ./test
+
+cppcheck:
+	@cppcheck --enable=all *.c *.h --suppress=unusedFunction --suppress=missingIncludeSystem
 
 rebuild: clean all
 

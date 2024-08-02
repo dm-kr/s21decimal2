@@ -4,223 +4,82 @@
 #include "./../other/other.h"
 #include "./arithmetic.h"
 
-/**
- * @brief Делит value_1 на value_2 и записывает результат в result
- *
- * @author Hubert Furr (hubertfu@student.21-school.ru)
- * @param value_1 делимое
- * @param value_2 делитель
- * @param result частное
- * @return int код ошибки:
- * 0 - OK
- * 1 - число слишком велико или равно бесконечности
- * 2 - число слишком мало или равно отрицательной бесконечности
- * 3 - деление на 0
- * 4 - некорректные входные данные
- */
 int s21_div(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
-  s21_arithmetic_result code = S21_ARITHMETIC_OK;
-
-  if (!result) {
-    // Если указатель на decimal является NULL
-    code = S21_ARITHMETIC_ERROR;
-  } else if (!is_correct(value_1) || !is_correct(value_2)) {
-    // Проверяем, что value_1 и value_2 являются корректными decimal
-    code = S21_ARITHMETIC_ERROR;
+  int code = 0;
+  if (result && s21_is_equal(value_2, Decimal(0))) {
+    code = 3;
     *result = inf();
-  } else if (s21_is_equal(value_2, Decimal(0))) {
-    // Проверяем случай, когда value_2 является нулем
-    code = S21_ARITHMETIC_ZERO_DIV;
-    *result = inf();
-  } else {
-    // В остальных случаях считаем частное
-    *result = Decimal(0);
+  } else if (result && is_correct(value_1) && is_correct(value_2)) {
     int sign1 = get_sign(value_1);
     int sign2 = get_sign(value_2);
-    big_decimal value_1l;
-    big_decimal value_2l;
-    // Выравниваем степени делимого и делителя (знак и степень при этом будут
-    // обнулены)
-    s21_decimal_leveling(value_1, value_2, &value_1l, &value_2l);
-
-    big_decimal remainder = tobd(Decimal(0));
+    big_decimal bd1;
+    big_decimal bd2;
+    rescaling(value_1, value_2, &bd1, &bd2);
+    big_decimal rem = tobd(Decimal(0));
     big_decimal res;
-
-    // Делим выравненное делимое на выравненный делитель, остаток от деления
-    // будет записан в remainder
-    res = bd_bin_div(value_1l, value_2l, &remainder);
-
+    res = bd_bin_div(bd1, bd2, &rem);
     if (res.decimals[0].bits[3] != 0 || !is_null(res.decimals[1])) {
-      // Если целый результат деления уже не помещается в decimal
-      // (переполнение), то возвращаем соответствующие ошибки
-      if (sign1 != sign2) {
-        code = S21_ARITHMETIC_SMALL;
-      } else {
-        code = S21_ARITHMETIC_BIG;
-      }
+      code = 1 + (sign1 != sign2);
       *result = inf();
     } else {
-      // В остальных случаях продолжаем вычисления и вызываем вспомогательную
-      // функцию для расчетов
-      code = s21_div_handle(value_2l, res, remainder, result);
-      // Если знаки делимого и делителя отличаются, то необходимо сделать
-      // результат отрицательным
-      if (sign1 != sign2) {
-        set_sign(result, 1);
-      }
-      // Корректируем код ответа от вспомогательной функции в случае ошибки и
-      // отрицательного результата
-      if (get_sign(*result) == 1 && code == S21_ARITHMETIC_BIG) {
-        code = S21_ARITHMETIC_SMALL;
-      }
-      // Обрабатываем ситуацию, что результат получился слишком маленький (0 <
-      // |x| < 1e-28)
-      if (code == S21_ARITHMETIC_OK && s21_is_not_equal(value_1, Decimal(0)) &&
+      code = div_handle(bd2, res, rem, result);
+      if (sign1 != sign2) set_sign(result, 1);
+      if (get_sign(*result) == 1 && code == 1) code = 2;
+      if (code == 0 && s21_is_not_equal(value_1, Decimal(0)) &&
           s21_is_equal(*result, Decimal(0))) {
-        code = S21_ARITHMETIC_SMALL;
+        code = 2;
       }
     }
   }
-
   return code;
 }
 
-/**
- * @brief Вспомогательная функция для деления
- *
- * @author Hubert Furr (hubertfu@student.21-school.ru)
- * @param value_2l - делитель
- * @param res - предварительно рассчитанная целая часть от целочисленного
- * деления
- * @param remainder - предварительно рассчитанный остаток от целочисленного
- * деления
- * @param result - результат деления (вида 12.5454334)
- * @return int код ошибки, для передачи в родительскую функцию (и последующей
- * обработки)
- */
-int s21_div_handle(big_decimal value_2l, big_decimal res, big_decimal remainder,
-                   s21_decimal *result) {
-  s21_arithmetic_result code = S21_ARITHMETIC_OK;
-
-  // рассчитываем дробную часть нашего результата и получаем в res результат,
-  // включая дробную часть после расчетов в remainder останется остаток от
-  // деления (который не поместился в дробную часть) power1 - значение степени
-  // результата
-  int power1 = s21_div_calc_fractional(&res, value_2l, &remainder);
-
+int div_handle(big_decimal bd2, big_decimal bdres, big_decimal rem,
+               s21_decimal *res) {
+  int code = 0;
+  int scale1 = calc_fractional(&bdres, bd2, &rem);
   big_decimal tmp_res = tobd(Decimal(0));
-  // Переводи остаток, полученный в расчете выше, в decimal, чтобы использовать
-  // его для округления power2 - значение степени данного decimal
-  int power2 = s21_div_calc_fractional(&tmp_res, value_2l, &remainder);
-
-  // Устанавливаем полученную степень для нашего остатка
-  set_scale(&tmp_res.decimals[0], power2);
-
+  int scale2 = calc_fractional(&tmp_res, bd2, &rem);
+  set_scale(&tmp_res.decimals[0], scale2);
   if (s21_is_equal(tmp_res.decimals[0], zerofive())) {
-    if (!is_null(remainder.decimals[0]) || !is_null(remainder.decimals[1])) {
-      // Если остаток от деления в виде decimal получился ровно 0.5, но после
-      // вычисления остаток от деления не равен 0, то корректируем остаток, т.к.
-      // фактически он больше 0.5: 0.5 + 0.0000000000000000000000000001 =
-      // 0.5000000000000000000000000001
+    if (!is_null(rem.decimals[0]) || !is_null(rem.decimals[1])) {
       s21_add(tmp_res.decimals[0], min_decimal(), &tmp_res.decimals[0]);
     }
   }
-  // Выполняем банковское округления результата, исходя из остатка от деления
-  res.decimals[0] = s21_round_banking(res.decimals[0], tmp_res.decimals[0]);
-  // Устанавливаем степень результата
-  set_scale(&res.decimals[0], power1);
-  // Анализируем результат на корректность (переполнение)
-  if (!is_null(res.decimals[1]) || !is_correct(res.decimals[0])) {
-    code = S21_ARITHMETIC_BIG;
-    *result = inf();
+  bdres.decimals[0] = s21_round_banking(bdres.decimals[0], tmp_res.decimals[0]);
+  set_scale(&bdres.decimals[0], scale1);
+  if (!is_null(bdres.decimals[1]) || !is_correct(bdres.decimals[0])) {
+    code = 1;
+    *res = inf();
   } else {
-    *result = res.decimals[0];
+    *res = bdres.decimals[0];
   }
-
   return code;
 }
 
-/**
- * @brief вспомогательная функция для расчета дробной части числа.
- *
- * Например, если изначально мы делим 62/16, то получаем 3 и 14 в остатке.
- * На входе функции в res записана целая часть числа, полученная при
- * предварительном целочисленном делении. Т.е. 3 из примера выше. value_2l на
- * входе содержит 16, а remainder содержит 14
- *
- * Что делает функция:
- * Остаток умножает на 10 и опять делит на value_2l, чтобы получить первую цифру
- * дробной части. новый остаток опять умножается на 10 и снова делит на value_2l
- * и т.д., т.е.:
- *
- * 1: 14 * 10 = 140 / 16 = 8 и 12 в остатке, целую часть умножаем на 10 и
- * прибавляем 8 - 38 2: 12 * 10 = 120 / 16 = 7 и 8 в остатке, 38 умножаем на 10
- * прибавляем 7 - 387 3: 8 * 10  = 80  / 16 = 5 и 0 в остатке, 387 умножаем на
- * 10 прибавляем 5 - 3875
- *
- * Итого в res записываем 3875, в remainder записываем 0, а в return возвращаем
- * 3, т.к. именно степень 3 превратит 3875 в decimal 3.875 (который и является
- * результатом 62/16)
- *
- * Если бы знаков decimal не хватило бы, чтобы записать дробь, то в remainder
- * был бы записан остаток от последнего деления, например: 59 / 15 = 3 и 14 в
- * остатке.
- *
- * 1: 140 / 15 = 9 (остаток 5) - 39
- * 2: 50 / 15 = 3 (остаток 5) - 393
- * 3: 50 / 15 = 3 (остаток 5) - 3933
- * 4: 50 / 15 = 3 (остаток 5) - 39333
- * 5: 50 / 15 = 3 (остаток 5) - 393333
- * .......
- * 28: 50 / 15 = 3 (остаток 5) - 39333333333333333333333333333
- *
- * В res записываем 39333333333333333333333333333
- * В remainder 5
- * В return 28
- *
- * @param res предварительно рассчитанная целая часть от целочисленного деления
- * @param value_2l делитель
- * @param remainder предварительно рассчитанный остаток от целочисленного
- * деления
- * @return int
- */
-int s21_div_calc_fractional(big_decimal *res, big_decimal value_2l,
-                            big_decimal *remainder) {
-  int power = 0;
+int calc_fractional(big_decimal *res, big_decimal bd2, big_decimal *rem) {
+  int scale = 0;
+  int flag = 0;
   big_decimal number = *res;
-
+  big_decimal tmp_rem = *rem;
   big_decimal tmp;
-  big_decimal tmp_remainder = *remainder;
-
-  // Производим расчеты пока остаток не будет полностью равен нулю или пока
-  // степень не станет максимально допустимой (28)
-  while ((!is_null((*remainder).decimals[0]) ||
-          !is_null((*remainder).decimals[1])) &&
-         power < 28) {
-    // Сохраняем значения полученных числа и остатка перед дальнейшей итерацией
-    // расчетов Чтобы вернуть эти значения в случае переполнения
+  while ((!is_null((*rem).decimals[0]) || !is_null((*rem).decimals[1])) &&
+         scale < 28 && !flag) {
     big_decimal number_stored = number;
-    big_decimal remainder_stored = tmp_remainder;
-
-    // Производим расчеты (вжик вжик, см бриф)
+    big_decimal rem_stored = tmp_rem;
     number = bd_bin_mul(number, Decimal(10));
-    tmp_remainder = bd_bin_mul(tmp_remainder, Decimal(10));
-    tmp = bd_bin_div(tmp_remainder, value_2l, &tmp_remainder);
+    tmp_rem = bd_bin_mul(tmp_rem, Decimal(10));
+    tmp = bd_bin_div(tmp_rem, bd2, &tmp_rem);
     number = bd_bin_add(number, tmp);
-
-    // Возвращаем предварительно сохраненные число и остаток, если произошло
-    // переполнение при расчете
     if (!is_correct(number.decimals[0])) {
       number = number_stored;
-      tmp_remainder = remainder_stored;
-      break;
+      tmp_rem = rem_stored;
+      flag = 1;
+    } else {
+      scale++;
     }
-
-    ++power;
   }
-
   *res = number;
-  *remainder = tmp_remainder;
-
-  return power;
+  *rem = tmp_rem;
+  return scale;
 }

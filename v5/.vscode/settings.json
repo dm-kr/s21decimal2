@@ -4,6 +4,8 @@
         "type_traits": "c",
         "binary.h": "c",
         "cmath": "c",
-        "comparison.h": "c"
+        "comparison.h": "c",
+        "arithmetic.h": "c",
+        "handlers.h": "c"
     }
 }
