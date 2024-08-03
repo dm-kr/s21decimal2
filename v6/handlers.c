@@ -76,11 +76,9 @@ int div_handle(big_decimal bd2, big_decimal bdres, big_decimal rem,
 
 int is_less_handle(s21_decimal d1, s21_decimal d2) {
   int code = 0;
-  s21_decimal tmp1 = d1;
-  s21_decimal tmp2 = d2;
   big_decimal bd1;
   big_decimal bd2;
-  rescaling(tmp1, tmp2, &bd1, &bd2);
+  rescaling(d1, d2, &bd1, &bd2);
   int compare = bd_bin_cmp(bd1, bd2);
   if (compare == -1) {
     code = 1;

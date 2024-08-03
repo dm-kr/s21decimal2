@@ -23,9 +23,7 @@ int s21_add(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
       code = add_handle(decimal_abs(value_1), decimal_abs(value_2), &res, 0);
       s21_negate(res, &res);
     }
-    if (get_sign(res) == 1 && code == 1) {
-      code = 2;
-    }
+    if (get_sign(res) == 1 && code == 1) code = 2;
     *result = res;
   }
   return code;
@@ -57,9 +55,7 @@ int s21_sub(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
         s21_negate(res, &res);
       }
     }
-    if (get_sign(res) == 1 && code == 1) {
-      code = 2;
-    }
+    if (get_sign(res) == 1 && code == 1) code = 2;
     *result = res;
   }
   return code;
@@ -71,17 +67,8 @@ int s21_mul(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
     s21_decimal res = Decimal(0);
     int sign1 = get_sign(value_1);
     int sign2 = get_sign(value_2);
-    if (sign1 == 0 && sign2 == 0) {
-      code = mul_handle(value_1, value_2, &res);
-    } else if (sign1 == 0 && sign2 == 1) {
-      code = mul_handle(value_1, decimal_abs(value_2), &res);
-      s21_negate(res, &res);
-    } else if (sign1 == 1 && sign2 == 0) {
-      code = mul_handle(decimal_abs(value_1), value_2, &res);
-      s21_negate(res, &res);
-    } else if (sign1 == 1 && sign2 == 1) {
-      code = mul_handle(decimal_abs(value_1), decimal_abs(value_2), &res);
-    }
+    code = mul_handle(decimal_abs(value_1), decimal_abs(value_2), &res);
+    if (sign1 ^ sign2) s21_negate(res, &res);
     if (code == 1 && get_sign(res)) code = 2;
     if (code == 0 && s21_is_not_equal(value_1, Decimal(0)) &&
         s21_is_not_equal(value_2, Decimal(0)) &&
@@ -183,7 +170,7 @@ int s21_from_int_to_decimal(int src, s21_decimal *dst) {
   } else {
     *dst = Decimal(0);
     set_sign(dst, (unsigned int)src >> 31);
-    dst->bits[0] = (src < 0 && src != INT_MIN) ? -src : src;
+    dst->bits[0] = abs(src);
   }
   return code;
 }
@@ -204,14 +191,11 @@ int s21_from_float_to_decimal(float src, s21_decimal *dst) {
     code = 1;
     *dst = Decimal(0);
   } else {
-    *dst = Decimal(0);
-    char float_string[64];
+    char float_string[16];
     sprintf(float_string, "%.6E", fabsf(src));
-    int exp = get_exp(float_string);
-    if (exp < -22) sprintf(float_string, "%.*E", exp + 28, fabsf(src));
     *dst = float_string_to_decimal(float_string);
   }
-  if (dst && signbit(src) != 0) set_sign(dst, 1);
+  if (dst) set_sign(dst, signbit(src) != 0);
   return code;
 }
 

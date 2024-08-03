@@ -9,7 +9,6 @@ int get_decimal_shift(big_decimal value) {
   if (!bd_is_null(value)) {
     big_decimal max = tobd(max_decimal());
     big_decimal quotient = bd_bin_div(value, max, NULL);
-
     while (bin_cmp(quotient.decimals[0], ten_pow(cnt)) > 0) cnt++;
     big_decimal tmp = bd_bin_div(value, tobd(ten_pow(cnt)), NULL);
     if (!is_null(tmp.decimals[1]) || tmp.decimals[0].bits[3] != 0) cnt++;
@@ -167,9 +166,7 @@ int is_correct(s21_decimal value) {
     code = 0;
   } else {
     int scale = get_scale(value);
-    if (scale < 0 || scale > 28) {
-      code = 0;
-    }
+    if (scale < 0 || scale > 28) code = 0;
   }
   return code;
 }
@@ -201,11 +198,7 @@ int get_empty2(s21_decimal value) {
 void set_sign(s21_decimal *value, int sign) {
   service_bits service;
   service.bits = value->bits[3];
-  if (sign == 0) {
-    service.parts.sign = 0;
-  } else {
-    service.parts.sign = 1;
-  }
+  service.parts.sign = sign;
   value->bits[3] = service.bits;
 }
 

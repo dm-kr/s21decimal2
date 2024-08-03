@@ -15,7 +15,7 @@ s21_decimal set_bit(s21_decimal value, int index) {
 
 int get_significants(s21_decimal value) {
   int result = -1;
-  for (int i = MAX_BITS - 1; i >= 0 && result == -1; i--) {
+  for (int i = ALL_BITS - 1; i >= 0 && result == -1; i--) {
     if (get_bit(value, i)) result = i;
   }
   return result;
@@ -59,7 +59,7 @@ int bd_is_null(big_decimal bd) {
 
 int bin_cmp(s21_decimal d1, s21_decimal d2) {
   int result = 0;
-  for (int i = MAX_BITS - 1; i >= 0 && result == 0; i--) {
+  for (int i = ALL_BITS - 1; i >= 0 && result == 0; i--) {
     result = get_bit(d1, i) - get_bit(d2, i);
   }
   return result;
@@ -81,10 +81,10 @@ big_decimal bd_bin_div(big_decimal d1, big_decimal d2, big_decimal *rem) {
   } else if (!bd_is_null(d1)) {
     int signs1_1 = get_significants(d1.decimals[1]);
     int signs1_0 = get_significants(d1.decimals[0]);
-    signs1_1 = signs1_1 == -1 ? signs1_0 : MAX_BITS + signs1_1;
+    signs1_1 = signs1_1 == -1 ? signs1_0 : ALL_BITS + signs1_1;
     int signs2_1 = get_significants(d2.decimals[1]);
     int signs2_0 = get_significants(d2.decimals[0]);
-    signs2_1 = signs2_1 == -1 ? signs2_0 : MAX_BITS + signs2_1;
+    signs2_1 = signs2_1 == -1 ? signs2_0 : ALL_BITS + signs2_1;
     int shift = signs1_1 - signs2_1;
     big_decimal divisor = bdshift(d2, LEFT, shift);
     big_decimal dividend = d1;
@@ -96,13 +96,13 @@ big_decimal bd_bin_div(big_decimal d1, big_decimal d2, big_decimal *rem) {
         remainder = bd_bin_add(dividend, divisor);
       }
       quotient = bdshift(quotient, LEFT, 1);
-      if (get_bit(remainder.decimals[1], MAX_BITS - 1) == 0) {
+      if (get_bit(remainder.decimals[1], ALL_BITS - 1) == 0) {
         quotient.decimals[0] = set_bit(quotient.decimals[0], 0);
       }
-      need_sub = !get_bit(remainder.decimals[1], MAX_BITS - 1);
+      need_sub = !get_bit(remainder.decimals[1], ALL_BITS - 1);
       dividend = bdshift(remainder, LEFT, 1);
     }
-    if (get_bit(remainder.decimals[1], MAX_BITS - 1)) {
+    if (get_bit(remainder.decimals[1], ALL_BITS - 1)) {
       remainder = bd_bin_add(remainder, divisor);
     }
     remainder = bdshift(remainder, RIGHT, signs1_1 - signs2_1);
@@ -167,13 +167,13 @@ s21_decimal bshift(s21_decimal value, int dir, int amount) {
 big_decimal bdshift(big_decimal value, int dir, int amount) {
   big_decimal result = value;
   for (int count = 0; count < amount; count++) {
-    int j = dir ? MAX_BITS - 1 : 0;
+    int j = dir ? ALL_BITS - 1 : 0;
     int bit = get_bit(result.decimals[1 - dir], j);
     result.decimals[0] = bshift(result.decimals[0], dir, 1);
     result.decimals[1] = bshift(result.decimals[1], dir, 1);
     if (bit) {
       result.decimals[dir] =
-          set_bit(result.decimals[dir], dir ? 0 : MAX_BITS - 1);
+          set_bit(result.decimals[dir], dir ? 0 : ALL_BITS - 1);
     }
   }
   return result;

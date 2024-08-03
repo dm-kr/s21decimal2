@@ -14,7 +14,7 @@ typedef struct big_decimal {
   s21_decimal decimals[2];
 } big_decimal;
 
-#define MAX_BITS 128
+#define ALL_BITS 128
 #define INT_SIZE 32
 #define BASE_SIZE 96
 
